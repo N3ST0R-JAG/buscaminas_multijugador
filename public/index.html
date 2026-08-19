@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Buscaminas Multijugador</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- PANTALLA 1: Login -->
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>Buscaminas Multijugador</h1>
+      <p>Escribe tu nombre para jugar</p>
+      <input type="text" id="name-input" placeholder="Tu nombre" maxlength="15" autocomplete="off">
+      <button id="join-btn">Entrar</button>
+      <p id="login-error" class="error"></p>
+    </div>
+  </div>
+
+  <!-- PANTALLA 2: Lobby -->
+  <div id="lobby-screen" class="hidden">
+    <div class="login-box">
+      <h1>Sala de Espera</h1>
+      <p id="lobby-welcome">Bienvenido</p>
+      <div class="lobby-options">
+        <button id="create-room-btn" class="lobby-btn">Crear Sala</button>
+        <div class="lobby-divider">o</div>
+        <div class="join-form">
+          <input type="text" id="room-code-input" placeholder="Codigo de sala" maxlength="5" autocomplete="off" style="text-transform: uppercase;">
+          <button id="join-room-btn" class="lobby-btn secondary">Unirse</button>
+        </div>
+      </div>
+      <p id="lobby-error" class="error"></p>
+    </div>
+  </div>
+
+  <!-- PANTALLA 3: Sala de espera -->
+  <div id="waiting-screen" class="hidden">
+    <div class="login-box waiting-box">
+      <h1>Sala: <span id="room-code-display"></span></h1>
+      <p id="waiting-hint">Comparte el codigo con tus amigos</p>
+      <div id="waiting-players"></div>
+      <button id="start-game-btn" class="hidden">Iniciar Juego</button>
+      <p id="waiting-hint2" class="waiting-sub">Esperando al host...</p>
+      <button id="leave-room-btn" class="lobby-btn secondary small">Salir de sala</button>
+    </div>
+    <div id="countdown-overlay" class="hidden">
+      <div id="countdown-number"></div>
+      <div id="countdown-text">El juego empieza en...</div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 4: Juego -->
+  <div id="game-screen" class="hidden">
+    <header>
+      <h1>Buscaminas</h1>
+      <div class="header-info">
+        <span id="my-name"></span>
+        <span id="my-status" class="status-badge waiting">Esperando...</span>
+      </div>
+      <div id="header-players" class="header-players"></div>
+      <div class="header-stats">
+        <span class="stat">Minas: <strong id="mine-count">40</strong></span>
+        <span class="stat">Banderas: <strong id="flag-count">0</strong></span>
+        <span class="stat">Rev: <strong id="revealed-count">0</strong></span>
+      </div>
+      <button id="reset-btn" class="reset-btn">Nuevo Juego</button>
+    </header>
+
+    <div id="mobile-nav">
+      <button id="nav-board" class="active" data-view="board">Mi Tablero</button>
+      <button id="nav-players" data-view="players">Jugadores</button>
+      <button id="nav-spectate" data-view="spectate">Espectar</button>
+    </div>
+
+    <div class="main-layout">
+      <aside id="sidebar">
+        <h2>Jugadores</h2>
+        <ul id="player-list"></ul>
+        <div id="sidebar-spectators"></div>
+      </aside>
+
+      <div class="game-area">
+        <div id="game-container">
+          <div id="board-label"></div>
+          <div id="board"></div>
+        </div>
+      </div>
+
+      <aside id="spectator-panel">
+        <div class="spectator-panel-header">
+          <h2>Espectando</h2>
+          <button id="close-spectator-btn" class="close-spectator" type="button">Salir</button>
+        </div>
+        <button id="spectator-back-btn" class="spectator-back hidden" type="button">Volver a POVs</button>
+        <div id="spectator-boards"></div>
+      </aside>
+    </div>
+
+    <div id="flag-toggle-container">
+      <button id="flag-toggle">Marker <span>OFF</span></button>
+    </div>
+
+    <div id="event-log">
+      <div id="log-content"></div>
+    </div>
+
+    <div id="game-over-modal" class="modal-overlay hidden">
+      <div class="game-over-box">
+        <h2 id="game-over-title">Partida finalizada</h2>
+        <p id="game-over-reason"></p>
+        <div id="leaderboard-list"></div>
+        <div class="game-over-actions">
+          <button id="game-over-reset-btn" type="button">Nueva partida</button>
+          <button id="game-over-close-btn" type="button">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

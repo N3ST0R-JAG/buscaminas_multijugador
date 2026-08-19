@@ -1,0 +1,80 @@
+=============================================
+  GUIA: Cómo publicar el Buscaminas Multijugador
+=============================================
+
+PROBLEMA CON GITHUB PAGES:
+--------------------------
+GitHub Pages SOLO sirve archivos estáticos (HTML, CSS, JS).
+Este juego usa Socket.IO (un servidor Node.js en tiempo real),
+por lo que GitHub Pages NO puede ejecutar el servidor del juego.
+
+Necesitas un hosting que soporte Node.js.
+
+
+OPCION 1: Railway (RECOMENDADO - Gratis)
+-----------------------------------------
+1. Sube tu código a un repositorio en GitHub
+2. Ve a https://railway.app y crea una cuenta
+3. Haz clic en "New Project" > "Deploy from GitHub repo"
+4. Selecciona tu repositorio
+5. Railway detectará automáticamente tu proyecto
+6. En la pestaña "Settings" > "Networking":
+   - Activa "Generate Domain" para obtener una URL pública
+7. ¡Listo! Comparte la URL generada
+
+NOTA: Railway gratis tiene ~500 horas/mes de uso.
+
+
+OPCION 2: Render (Gratis)
+--------------------------
+1. Sube tu código a GitHub
+2. Ve a https://render.com y crea una cuenta
+3. Crea un "New Web Service"
+4. Conecta tu repositorio de GitHub
+5. Configuración:
+   - Build Command: npm install
+   - Start Command: npm start
+6. En "Settings" > "Custom Domains":
+   - Genera un dominio público gratuito (*.onrender.com)
+7. ¡Listo!
+
+
+OPCION 3: Fly.io (Gratis con límites)
+---------------------------------------
+1. Instala la CLI de Fly: curl -L https://fly.io/install.sh | sh
+2. Crea un archivo fly.toml en la raíz con:
+   [build]
+   [http_service]
+     internal_port = 3000
+     force_https = true
+3. Ejecuta: fly launch
+4. Ejecuta: fly deploy
+5. Ejecuta: fly apps open para ver tu URL
+
+
+CAMBIO NECESARIO EN EL CÓDIGO:
+-------------------------------
+Si el servidor está en una URL diferente a localhost:3000,
+debes cambiar la conexión Socket.IO en public/index.html.
+
+Actualmente dice (línea 77):
+  <script src="/socket.io/socket.io.js"></script>
+
+Esto funciona porque Socket.IO se sirve desde el mismo servidor.
+NO necesitas cambiar nada si despliegas el servidor Node.js completo.
+
+Sin embargo, si algún cliente conecta a un servidor externo,
+en game.js línea 1 cambia:
+  const socket = io();
+por:
+  const socket = io('https://tu-url-del-servidor.railway.app');
+
+
+RESUMEN RÁPIDO:
+---------------
+1. Sube el proyecto a GitHub
+2. Usa Railway, Render o Fly.io para hospedar el servidor Node.js
+3. Comparte la URL pública generada
+4. ¡Hasta 5 jugadores pueden entrar al mismo tiempo!
+
+NO uses solo GitHub Pages porque no ejecuta Node.js.
