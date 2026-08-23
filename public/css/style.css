@@ -7,10 +7,24 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-image: url(../source/file_0000000008fc820eb17cd2087e68baa1.png);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-color: #dcebd3;
   color: #e0e0e0;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
+}
+
+:root {
+  --garden-cream: rgba(255, 248, 220, 0.25);
+  --garden-leaf: rgba(46, 103, 67, 0.25);
+  --garden-moss: rgba(81, 125, 73, 0.25);
+  --garden-petal: rgba(211, 91, 124, 0.25);
+  --garden-border: rgba(255, 244, 189, 0.75);
+  --garden-ink: #28452e;
+  --garden-muted: #49664d;
 }
 
 .hidden {
@@ -31,7 +45,7 @@ body {
 }
 
 .login-box {
-  background: #e0e0e0;
+  background: rgba(224, 224, 224, 0.55);
   padding: 40px 32px;
   border-radius: 16px;
   text-align: center;
@@ -1132,4 +1146,164 @@ header h1 {
   .join-form input { font-size: 1rem; padding: 12px; }
   #room-code-display { font-size: 1.6rem; }
 
+}
+
+/* Floral field theme */
+.login-box,
+header,
+#mobile-nav,
+#sidebar,
+#spectator-panel,
+.game-over-box {
+  background: var(--garden-leaf);
+  border-color: var(--garden-border);
+}
+
+.login-box input,
+.waiting-player,
+.header-player-chip,
+#player-list li,
+.log-event,
+.leaderboard-row {
+  background: var(--garden-cream);
+  border-color: rgba(255, 244, 189, 0.65);
+}
+
+.login-box input {
+  color: var(--garden-ink);
+}
+
+body,
+#my-name,
+.leaderboard-name,
+.stat strong,
+.game-over-box h2,
+.login-box h1,
+header h1,
+#sidebar h2,
+#spectator-panel h2 {
+  color: var(--garden-ink);
+}
+
+.login-box p,
+.lobby-divider,
+#waiting-hint,
+#waiting-hint2,
+#countdown-text,
+.stat,
+.player-stats,
+.hint,
+.spectator-label,
+#board-label,
+#spectator-label,
+#game-over-reason,
+.leaderboard-detail,
+.leaderboard-score,
+#log-content {
+  color: var(--garden-muted);
+}
+
+.login-box button,
+.lobby-btn,
+.host-badge {
+  background: var(--garden-petal);
+  color: #fff8e2;
+  border: 1px solid rgba(255, 224, 178, 0.75);
+}
+
+.login-box button:active,
+.lobby-btn:active {
+  background: rgba(178, 65, 102, 0.25);
+}
+
+.lobby-btn.secondary,
+.reset-btn,
+.game-over-actions button {
+  background: var(--garden-moss);
+  color: #fff8e2;
+  border-color: var(--garden-border);
+}
+
+.lobby-btn.secondary:active,
+.reset-btn:active,
+.game-over-actions button:active {
+  background: rgba(255, 244, 189, 0.25);
+  color: var(--garden-ink);
+}
+
+.status-badge.waiting,
+.status-badge.finished {
+  background: var(--garden-cream);
+  color: var(--garden-muted);
+}
+
+.status-badge.playing,
+.status-badge.won,
+.status-badge.lost {
+  background: var(--garden-moss);
+  color: #fff8e2;
+}
+
+.status-badge.lost,
+.cell.mine,
+.cell.mine-exploded {
+  background: var(--garden-petal);
+}
+
+#board,
+.spectator-board {
+  background: var(--garden-moss);
+  border-color: var(--garden-border);
+}
+
+.cell.hidden-cell {
+  background: var(--garden-leaf);
+  border-color: rgba(255, 244, 189, 0.65);
+}
+
+.cell.hidden-cell:active,
+.cell.revealed {
+  background: var(--garden-cream);
+}
+
+.cell.revealed {
+  border-color: rgba(255, 244, 189, 0.55);
+}
+
+.cell.flagged,
+#flag-toggle.active {
+  background: var(--garden-petal);
+  border-color: rgba(255, 224, 178, 0.85);
+}
+
+#countdown-overlay,
+.modal-overlay {
+  background: rgba(49, 86, 48, 0.25);
+}
+
+#event-log {
+  background: var(--garden-leaf);
+  border-color: var(--garden-border);
+}
+
+#mobile-nav button {
+  background: var(--garden-cream);
+  color: var(--garden-ink);
+  border-color: var(--garden-border);
+}
+
+#mobile-nav button.active,
+#mobile-nav button:active {
+  background: var(--garden-moss);
+  color: #fff8e2;
+}
+
+#flag-toggle {
+  background: var(--garden-leaf);
+  color: #fff8e2;
+  border-color: var(--garden-border);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(81, 125, 73, 0.25);
 }
