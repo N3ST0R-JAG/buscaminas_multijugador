@@ -18,11 +18,11 @@ body {
 }
 
 :root {
-  --garden-cream: rgba(255, 248, 220, 0.50);
-  --garden-leaf: rgba(46, 103, 67, 0.50);
-  --garden-moss: rgba(81, 125, 73, 0.50);
-  --garden-petal: rgba(211, 91, 124, 0.50);
-  --garden-border: rgba(255, 244, 189, 0.75);
+  --garden-cream: rgba(255, 248, 220, 0.75);
+  --garden-leaf: rgba(46, 103, 67, 0.75);
+  --garden-moss: rgba(81, 125, 73, 0.75);
+  --garden-petal: rgba(211, 91, 124, 0.75);
+  --garden-border: rgba(255, 244, 189, 1);
   --garden-ink: #28452e;
   --garden-muted: #49664d;
 }
