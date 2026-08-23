@@ -31,7 +31,7 @@ body {
 }
 
 .login-box {
-  background: #16213e;
+  background: #e0e0e0;
   padding: 40px 32px;
   border-radius: 16px;
   text-align: center;
@@ -387,39 +387,46 @@ header h1 {
 #flag-toggle-container {
   display: none;
   position: fixed;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 12px;
+  bottom: 58px;
   z-index: 100;
-  background: rgba(22, 33, 62, 0.95);
-  border: 2px solid #0f3460;
-  border-radius: 16px;
-  padding: 6px;
-  backdrop-filter: blur(8px);
 }
 
 #flag-toggle {
-  padding: 12px 24px;
-  background: #1a1a2e;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(22, 33, 62, 0.95);
   color: #aaa;
-  border: none;
-  border-radius: 12px;
-  font-size: 1.4rem;
+  border: 2px solid #0f3460;
+  font-size: 1.15rem;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.2s;
   -webkit-tap-highlight-color: transparent;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
 }
 
 #flag-toggle.active {
   background: #4a2040;
   color: #e94560;
-  box-shadow: 0 0 16px rgba(233, 69, 96, 0.3);
+  border-color: #e94560;
+  box-shadow: 0 0 14px rgba(233, 69, 96, 0.45);
 }
 
-#flag-toggle span { font-size: 0.85rem; font-weight: bold; }
+#flag-toggle span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 
 /* Main Layout */
 .main-layout {
@@ -597,6 +604,36 @@ header h1 {
 .cell.n6 { color: #4dd0e1; }
 .cell.n7 { color: #e0e0e0; }
 .cell.n8 { color: #aaa; }
+
+/* Power-ups */
+#powerup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid #ffd700;
+  color: #ffd700;
+  font-size: 0.7rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.mini-power {
+  margin-left: 4px;
+  font-size: 0.75rem;
+}
+
+.cell.powerup-found {
+  background: #241f08;
+  border-color: #ffd700;
+}
+
+.log-event.powerup {
+  color: #ffd700;
+  border: 1px solid #ffd700;
+}
 
 /* Spectator Panel */
 #spectator-panel {

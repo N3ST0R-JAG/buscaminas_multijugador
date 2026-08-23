@@ -14,6 +14,10 @@ const BOARD_WIDTH = 16;
 const BOARD_HEIGHT = 16;
 const MINE_COUNT = 40;
 const COUNTDOWN_SECONDS = 5;
+const POWERUP_TYPES = {
+  autoReveal: 'autoReveal',
+};
+const POWERUPS_PER_BOARD = 3;
 
 const rooms = {};
 const players = {};
@@ -37,6 +41,7 @@ function getRoomPlayerList(roomCode) {
     revealedCount: players[id].revealedCount,
     flagCount: players[id].flagCount,
     mineCount: MINE_COUNT,
+    hasAutoReveal: Boolean(players[id].powerups && players[id].powerups.autoReveal),
     isHost: id === room.host,
   }));
 }
@@ -52,6 +57,7 @@ function createEmptyBoard() {
       revealed: false,
       flagged: false,
       adjacentMines: 0,
+      powerup: null,
     }))
   );
 }
@@ -86,11 +92,25 @@ function placeMines(board, firstClickRow, firstClickCol) {
   }
 }
 
+function placePowerUps(board) {
+  let placed = 0;
+  let attempts = 0;
+  while (placed < POWERUPS_PER_BOARD && attempts < 500) {
+    attempts++;
+    const r = Math.floor(Math.random() * BOARD_HEIGHT);
+    const c = Math.floor(Math.random() * BOARD_WIDTH);
+    const cell = board[r][c];
+    if (cell.mine || cell.powerup) continue;
+    cell.powerup = POWERUP_TYPES.autoReveal;
+    placed++;
+  }
+}
+
 function revealCell(board, r, c) {
   if (r < 0 || r >= BOARD_HEIGHT || c < 0 || c >= BOARD_WIDTH) return [];
   if (board[r][c].revealed || board[r][c].flagged) return [];
   board[r][c].revealed = true;
-  const revealed = [{ r, c, adjacentMines: board[r][c].adjacentMines, mine: board[r][c].mine }];
+  const revealed = [{ r, c, adjacentMines: board[r][c].adjacentMines, mine: board[r][c].mine, powerup: board[r][c].powerup || null }];
   if (board[r][c].adjacentMines === 0 && !board[r][c].mine) {
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
@@ -115,10 +135,10 @@ function getPublicBoard(board, status) {
   return board.map((row, r) =>
     row.map((cell, c) => {
       if (status === 'lost') {
-        return { revealed: true, mine: cell.mine, flagged: cell.flagged, adjacentMines: cell.adjacentMines };
+        return { revealed: true, mine: cell.mine, flagged: cell.flagged, adjacentMines: cell.adjacentMines, powerup: cell.powerup || null };
       }
       if (cell.revealed) {
-        return { revealed: true, mine: cell.mine, flagged: false, adjacentMines: cell.adjacentMines };
+        return { revealed: true, mine: cell.mine, flagged: false, adjacentMines: cell.adjacentMines, powerup: cell.powerup || null };
       }
       return { revealed: false, mine: false, flagged: cell.flagged, adjacentMines: 0 };
     })
@@ -233,6 +253,65 @@ function finishIfOnlyOneAlive(roomCode) {
   finishGame(roomCode, aliveIds[0], 'lastAlive');
 }
 
+function grantPowerUps(player, revealedCells) {
+  const gained = [];
+  revealedCells.forEach((cellData) => {
+    const type = cellData.powerup;
+    if (!type) return;
+    player.powerups[type] = (player.powerups[type] || 0) + 1;
+    if (!gained.includes(type)) gained.push(type);
+  });
+  return gained;
+}
+
+function emitPowerUpGained(socket, types) {
+  if (!types || types.length === 0) return;
+  socket.emit('powerUpGained', { powerups: types });
+}
+
+function handleExplosion(socket, roomCode, player) {
+  player.status = 'lost';
+  io.to(roomCode).emit('boardUpdate', {
+    playerId: socket.id,
+    playerName: player.name,
+    board: getPublicBoard(player.board, 'lost'),
+    status: 'lost',
+    revealedCount: player.revealedCount,
+    flagCount: player.flagCount,
+  });
+  io.to(roomCode).emit('gameEvent', {
+    playerId: socket.id,
+    playerName: player.name,
+    event: 'lost',
+  });
+  broadcastRoomPlayers(roomCode);
+  finishIfOnlyOneAlive(roomCode);
+}
+
+function handleSafeReveal(socket, roomCode, player, revealedCells) {
+  player.revealedCount += revealedCells.length;
+  if (checkWin(player.board)) {
+    player.status = 'won';
+    io.to(roomCode).emit('gameEvent', {
+      playerId: socket.id,
+      playerName: player.name,
+      event: 'won',
+    });
+  }
+  io.to(roomCode).emit('boardUpdate', {
+    playerId: socket.id,
+    playerName: player.name,
+    board: getPublicBoard(player.board, player.status),
+    status: player.status,
+    revealedCount: player.revealedCount,
+    flagCount: player.flagCount,
+  });
+  broadcastRoomPlayers(roomCode);
+  if (player.status === 'won') {
+    finishGame(roomCode, socket.id, 'completed');
+  }
+}
+
 io.on('connection', (socket) => {
   console.log(`Conectado: ${socket.id}`);
 
@@ -254,6 +333,7 @@ io.on('connection', (socket) => {
       minesPlaced: false,
       revealedCount: 0,
       flagCount: 0,
+      powerups: {},
     };
 
     callback({ success: true, playerId: socket.id });
@@ -342,6 +422,7 @@ io.on('connection', (socket) => {
           p.minesPlaced = false;
           p.revealedCount = 0;
           p.flagCount = 0;
+          p.powerups = {};
         });
 
         io.to(roomCode).emit('gameStarted', {
@@ -371,55 +452,67 @@ io.on('connection', (socket) => {
 
     if (!player.minesPlaced) {
       placeMines(player.board, row, col);
+      placePowerUps(player.board);
       player.minesPlaced = true;
     }
 
     const revealedCells = revealCell(player.board, row, col);
+    const gainedPowerUps = grantPowerUps(player, revealedCells);
 
     if (player.board[row][col].mine) {
-      player.status = 'lost';
-      const fullBoard = getPublicBoard(player.board, 'lost');
-      io.to(player.room).emit('boardUpdate', {
-        playerId: socket.id,
-        playerName: player.name,
-        board: fullBoard,
-        status: 'lost',
-        revealedCount: player.revealedCount,
-        flagCount: player.flagCount,
-      });
-      io.to(player.room).emit('gameEvent', {
-        playerId: socket.id,
-        playerName: player.name,
-        event: 'lost',
-      });
-      broadcastRoomPlayers(roomCode);
-      finishIfOnlyOneAlive(roomCode);
-      return;
-    } else {
-      player.revealedCount += revealedCells.length;
-      if (checkWin(player.board)) {
-        player.status = 'won';
-        io.to(player.room).emit('gameEvent', {
-          playerId: socket.id,
-          playerName: player.name,
-          event: 'won',
-        });
-      }
-      const publicBoard = getPublicBoard(player.board, player.status);
-      io.to(player.room).emit('boardUpdate', {
-        playerId: socket.id,
-        playerName: player.name,
-        board: publicBoard,
-        status: player.status,
-        revealedCount: player.revealedCount,
-        flagCount: player.flagCount,
-      });
-      broadcastRoomPlayers(roomCode);
-      if (player.status === 'won') {
-        finishGame(roomCode, socket.id, 'completed');
-      }
+      handleExplosion(socket, roomCode, player);
       return;
     }
+
+    handleSafeReveal(socket, roomCode, player, revealedCells);
+    emitPowerUpGained(socket, gainedPowerUps);
+  });
+
+  socket.on('chordReveal', ({ row, col }) => {
+    const player = players[socket.id];
+    if (!player || !player.room || !player.board) return;
+    const roomCode = player.room;
+    const room = rooms[roomCode];
+    if (!room || room.status !== 'playing') return;
+    if (player.status === 'lost' || player.status === 'won' || player.status === 'finished') return;
+    if (!player.powerups || !player.powerups.autoReveal) return;
+    if (typeof row !== 'number' || typeof col !== 'number') return;
+    if (row < 0 || row >= BOARD_HEIGHT || col < 0 || col >= BOARD_WIDTH) return;
+
+    const origin = player.board[row][col];
+    if (!origin.revealed || origin.adjacentMines === 0) return;
+
+    const targets = [];
+    let adjacentFlags = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr < 0 || nr >= BOARD_HEIGHT || nc < 0 || nc >= BOARD_WIDTH) continue;
+        const neighbor = player.board[nr][nc];
+        if (neighbor.flagged) adjacentFlags++;
+        else if (!neighbor.revealed) targets.push([nr, nc]);
+      }
+    }
+
+    if (adjacentFlags !== origin.adjacentMines || targets.length === 0) return;
+
+    const mineTarget = targets.find(([nr, nc]) => player.board[nr][nc].mine);
+    if (mineTarget) {
+      player.board[mineTarget[0]][mineTarget[1]].revealed = true;
+      handleExplosion(socket, roomCode, player);
+      return;
+    }
+
+    const revealedCells = [];
+    targets.forEach(([nr, nc]) => {
+      revealedCells.push(...revealCell(player.board, nr, nc));
+    });
+
+    const gainedPowerUps = grantPowerUps(player, revealedCells);
+    handleSafeReveal(socket, roomCode, player, revealedCells);
+    emitPowerUpGained(socket, gainedPowerUps);
   });
 
   socket.on('flag', ({ row, col }) => {
@@ -471,6 +564,7 @@ io.on('connection', (socket) => {
       p.minesPlaced = false;
       p.revealedCount = 0;
       p.flagCount = 0;
+      p.powerups = {};
     });
 
     io.to(player.room).emit('boardReset');
@@ -511,6 +605,7 @@ io.on('connection', (socket) => {
     player.minesPlaced = false;
     player.revealedCount = 0;
     player.flagCount = 0;
+    player.powerups = {};
 
     io.to(roomCode).emit('gameEvent', {
       playerName: leavingName,
@@ -547,6 +642,7 @@ io.on('connection', (socket) => {
           p.minesPlaced = false;
           p.revealedCount = 0;
           p.flagCount = 0;
+          p.powerups = {};
         });
         io.to(roomCode).emit('boardReset');
         io.to(roomCode).emit('gameReset');

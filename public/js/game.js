@@ -14,6 +14,10 @@ let longPressTimer = null;
 let isMobile = false;
 let focusedSpectatorId = null;
 let gameFinished = false;
+let myPowerups = { autoReveal: false };
+let lastTapInfo = { cellKey: null, time: 0 };
+
+const POWERUP_LABELS = { autoReveal: 'Revelado Automatico' };
 
 const loginScreen = document.getElementById('login-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -67,6 +71,13 @@ const gameOverReason = document.getElementById('game-over-reason');
 const leaderboardList = document.getElementById('leaderboard-list');
 const gameOverResetBtn = document.getElementById('game-over-reset-btn');
 const gameOverCloseBtn = document.getElementById('game-over-close-btn');
+const powerupBadge = document.getElementById('powerup-badge');
+
+function resetMyPowerups() {
+  myPowerups = { autoReveal: false };
+  lastTapInfo = { cellKey: null, time: 0 };
+  if (powerupBadge) powerupBadge.classList.add('hidden');
+}
 
 function showScreen(screen) {
   loginScreen.classList.add('hidden');
@@ -211,6 +222,7 @@ socket.on('gameStarted', (data) => {
   spectatingPlayers = {};
   focusedSpectatorId = null;
   gameFinished = false;
+  resetMyPowerups();
   gameOverModal.classList.add('hidden');
   createEmptyBoardDisplay(boardEl, boardWidth, boardHeight, true);
   boardLabel.textContent = 'Tu tablero';
@@ -225,6 +237,7 @@ socket.on('gameReset', () => {
   spectatingPlayers = {};
   focusedSpectatorId = null;
   gameFinished = false;
+  resetMyPowerups();
   gameOverModal.classList.add('hidden');
   showScreen(waitingScreen);
   if (isHost) {
@@ -287,7 +300,7 @@ function renderGamePlayerList(players) {
     li.innerHTML = `
       <div class="player-name">
         <span class="dot ${p.status}"></span>
-        ${p.name}${p.id === myPlayerId ? ' (tu)' : ''}
+        ${p.name}${p.id === myPlayerId ? ' (tu)' : ''}${p.hasAutoReveal ? '<span class="mini-power">⚡</span>' : ''}
       </div>
       <div class="player-stats">
         ${statusText[p.status]} | Rev: ${p.revealedCount} | Band: ${p.flagCount}/${p.mineCount}
@@ -314,7 +327,7 @@ function updateHeaderPlayers() {
     const span = document.createElement('span');
     span.className = 'header-player-chip';
     if (p.id === myPlayerId) span.classList.add('me');
-    span.innerHTML = `<span class="dot ${p.status}"></span>${p.name}${p.id === myPlayerId ? ' (tu)' : ''}`;
+    span.innerHTML = `<span class="dot ${p.status}"></span>${p.name}${p.id === myPlayerId ? ' (tu)' : ''}${p.hasAutoReveal ? '<span class="mini-power">⚡</span>' : ''}`;
     headerPlayersEl.appendChild(span);
   });
 }
@@ -441,7 +454,7 @@ function createSpectatorBoardWrap(player, options = {}) {
   label.className = 'spectator-label';
 
   const statusText = { waiting: 'Esperando', playing: 'Jugando', won: 'Gano!', lost: 'Perdio', finished: 'Finalizado' };
-  label.textContent = `${player.name} [${statusText[player.status]}]`;
+  label.textContent = `${player.name}${player.hasAutoReveal ? ' ⚡' : ''} [${statusText[player.status]}]`;
 
   const board = document.createElement('div');
   board.className = 'spectator-board';
@@ -490,6 +503,10 @@ function renderSpectatorBoardInto(boardEl, boardData, status, playerName) {
             cell.textContent = '*';
           } else {
             cell.classList.add('revealed');
+            if (cellData.powerup) {
+              cell.classList.add('powerup-found');
+              cell.title = 'Potenciador: ' + (POWERUP_LABELS[cellData.powerup] || cellData.powerup);
+            }
             if (cellData.adjacentMines > 0) {
               cell.textContent = cellData.adjacentMines;
               cell.classList.add('n' + cellData.adjacentMines);
@@ -546,6 +563,7 @@ socket.on('boardReset', () => {
   spectatingPlayers = {};
   focusedSpectatorId = null;
   gameFinished = false;
+  resetMyPowerups();
   gameOverModal.classList.add('hidden');
   myStatusEl.textContent = 'Esperando...';
   myStatusEl.className = 'status-badge waiting';
@@ -557,6 +575,16 @@ socket.on('boardReset', () => {
 
 socket.on('gameEvent', (data) => {
   addLogEvent(`${data.playerName} ${data.event === 'won' ? 'gano la partida!' : data.event === 'lost' ? ' exploto!' : data.event === 'join' ? ' se unio' : ' se desconecto'}`, data.event);
+});
+
+socket.on('powerUpGained', (data) => {
+  (data.powerups || []).forEach((type) => {
+    myPowerups[type] = true;
+    if (type === 'autoReveal') {
+      if (powerupBadge) powerupBadge.classList.remove('hidden');
+      addLogEvent('⚡ Encontraste: Revelado Automatico (doble click/tap en numeros)', 'powerup');
+    }
+  });
 });
 
 socket.on('gameOver', (data) => {
@@ -719,6 +747,11 @@ function setupCellEvents(cell, r, c) {
     socket.emit('reveal', { row: r, col: c });
   });
 
+  cell.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    tryChord(r, c);
+  });
+
   cell.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     if (gameFinished) return;
@@ -740,12 +773,45 @@ function setupCellEvents(cell, r, c) {
   cell.addEventListener('touchend', () => {
     pressStarted = false;
     clearTimeout(longPressTimer);
+    const now = Date.now();
+    const key = r + ':' + c;
+    if (lastTapInfo.cellKey === key && now - lastTapInfo.time < 300) {
+      lastTapInfo = { cellKey: null, time: 0 };
+      tryChord(r, c);
+    } else {
+      lastTapInfo = { cellKey: key, time: now };
+    }
   });
 
   cell.addEventListener('touchmove', () => {
     pressStarted = false;
     clearTimeout(longPressTimer);
   });
+}
+
+function tryChord(row, col) {
+  if (gameFinished || flagMode) return;
+  if (!myPowerups.autoReveal) return;
+  if (!myBoard || !myBoard[row] || !myBoard[row][col]) return;
+  const origin = myBoard[row][col];
+  if (!origin.revealed || origin.mine || origin.adjacentMines === 0) return;
+
+  let adjacentFlags = 0;
+  let hiddenCount = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = row + dr;
+      const nc = col + dc;
+      if (nr < 0 || nr >= boardHeight || nc < 0 || nc >= boardWidth) continue;
+      const neighbor = myBoard[nr][nc];
+      if (neighbor.flagged) adjacentFlags++;
+      else if (!neighbor.revealed) hiddenCount++;
+    }
+  }
+
+  if (adjacentFlags !== origin.adjacentMines || hiddenCount === 0) return;
+  socket.emit('chordReveal', { row, col });
 }
 
 function renderMyBoard(board, status) {
@@ -770,6 +836,10 @@ function renderMyBoard(board, status) {
           cell.textContent = '*';
         } else {
           cell.classList.add('revealed');
+          if (cellData.powerup) {
+            cell.classList.add('powerup-found');
+            cell.title = 'Potenciador: ' + (POWERUP_LABELS[cellData.powerup] || cellData.powerup);
+          }
           if (cellData.adjacentMines > 0) {
             cell.textContent = cellData.adjacentMines;
             cell.classList.add('n' + cellData.adjacentMines);
