@@ -1,10 +1,10 @@
 @font-face{
   font-family: '8-bit Arcade Out';
-  src: url('../source/Fonts/8-bit-Arcade-Out.ttf') format('ttf'); 
+  src: url('../source/Fonts/8-bit-Arcade-Out.ttf') format('truetype'); 
 }
 @font-face {
   font-family: '8-bit Arcade In';
-  src: url('../source/Fonts/8-bit-Arcade-In.ttf') format('ttf');
+  src: url('../source/Fonts/8-bit-Arcade-In.ttf') format('truetype');
 }
 
 * {
