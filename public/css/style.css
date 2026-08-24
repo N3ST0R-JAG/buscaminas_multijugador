@@ -1,3 +1,12 @@
+@font-face{
+  font-family: '8-bit Arcade Out';
+  src: url('../source/Fonts/8-bit-Arcade-Out.ttf') format('ttf'); 
+}
+@font-face {
+  font-family: '8-bit Arcade In';
+  src: url('../source/Fonts/8-bit-Arcade-In.ttf') format('ttf');
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,7 +14,7 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: '8-bit Arcade Uot', Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
   background-image: url(../source/file_0000000008fc820eb17cd2087e68baa1.png);
   background-size: cover;
   background-position: center;
