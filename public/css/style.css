@@ -626,9 +626,9 @@ header h1 {
   gap: 4px;
   padding: 3px 10px;
   border-radius: 12px;
-  background: rgba(255, 215, 0, 0.12);
-  border: 1px solid #ffd700;
-  color: #ffd700;
+  background: rgba(77, 163, 255, 0.15);
+  border: 1px solid #4da3ff;
+  color: #4da3ff;
   font-size: 0.7rem;
   font-weight: bold;
   white-space: nowrap;
@@ -640,13 +640,13 @@ header h1 {
 }
 
 .cell.powerup-found {
-  background: #241f08;
-  border-color: #ffd700;
+  background: #0a1930;
+  border-color: #4da3ff;
 }
 
 .log-event.powerup {
-  color: #ffd700;
-  border: 1px solid #ffd700;
+  color: #4da3ff;
+  border: 1px solid #4da3ff;
 }
 
 /* Spectator Panel */

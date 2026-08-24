@@ -18,6 +18,7 @@ const POWERUP_TYPES = {
   autoReveal: 'autoReveal',
 };
 const POWERUPS_PER_BOARD = 3;
+const POWERUP_DURATION_MS = 30000;
 
 const rooms = {};
 const players = {};
@@ -41,7 +42,11 @@ function getRoomPlayerList(roomCode) {
     revealedCount: players[id].revealedCount,
     flagCount: players[id].flagCount,
     mineCount: MINE_COUNT,
-    hasAutoReveal: Boolean(players[id].powerups && players[id].powerups.autoReveal),
+    hasAutoReveal: Boolean(
+      players[id].powerups &&
+      players[id].powerups.autoReveal &&
+      players[id].autoRevealExpiresAt > Date.now()
+    ),
     isHost: id === room.host,
   }));
 }
@@ -254,14 +259,27 @@ function finishIfOnlyOneAlive(roomCode) {
 }
 
 function grantPowerUps(player, revealedCells) {
-  const gained = [];
+  const gainedCounts = {};
   revealedCells.forEach((cellData) => {
     const type = cellData.powerup;
     if (!type) return;
     player.powerups[type] = (player.powerups[type] || 0) + 1;
-    if (!gained.includes(type)) gained.push(type);
+    gainedCounts[type] = (gainedCounts[type] || 0) + 1;
+    if (type === 'autoReveal') {
+      const base = Math.max(player.autoRevealExpiresAt || 0, Date.now());
+      player.autoRevealExpiresAt = base + POWERUP_DURATION_MS;
+    }
   });
-  return gained;
+  return Object.keys(gainedCounts).map((type) => ({ type, count: gainedCounts[type] }));
+}
+
+function hasActiveAutoReveal(player) {
+  return Boolean(
+    player &&
+    player.powerups &&
+    player.powerups.autoReveal &&
+    player.autoRevealExpiresAt > Date.now()
+  );
 }
 
 function emitPowerUpGained(socket, types) {
@@ -334,6 +352,7 @@ io.on('connection', (socket) => {
       revealedCount: 0,
       flagCount: 0,
       powerups: {},
+      autoRevealExpiresAt: 0,
     };
 
     callback({ success: true, playerId: socket.id });
@@ -423,6 +442,7 @@ io.on('connection', (socket) => {
           p.revealedCount = 0;
           p.flagCount = 0;
           p.powerups = {};
+          p.autoRevealExpiresAt = 0;
         });
 
         io.to(roomCode).emit('gameStarted', {
@@ -457,13 +477,13 @@ io.on('connection', (socket) => {
     }
 
     const revealedCells = revealCell(player.board, row, col);
-    const gainedPowerUps = grantPowerUps(player, revealedCells);
 
     if (player.board[row][col].mine) {
       handleExplosion(socket, roomCode, player);
       return;
     }
 
+    const gainedPowerUps = grantPowerUps(player, revealedCells);
     handleSafeReveal(socket, roomCode, player, revealedCells);
     emitPowerUpGained(socket, gainedPowerUps);
   });
@@ -475,7 +495,7 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode];
     if (!room || room.status !== 'playing') return;
     if (player.status === 'lost' || player.status === 'won' || player.status === 'finished') return;
-    if (!player.powerups || !player.powerups.autoReveal) return;
+    if (!hasActiveAutoReveal(player)) return;
     if (typeof row !== 'number' || typeof col !== 'number') return;
     if (row < 0 || row >= BOARD_HEIGHT || col < 0 || col >= BOARD_WIDTH) return;
 
@@ -565,6 +585,7 @@ io.on('connection', (socket) => {
       p.revealedCount = 0;
       p.flagCount = 0;
       p.powerups = {};
+      p.autoRevealExpiresAt = 0;
     });
 
     io.to(player.room).emit('boardReset');
@@ -606,6 +627,7 @@ io.on('connection', (socket) => {
     player.revealedCount = 0;
     player.flagCount = 0;
     player.powerups = {};
+    player.autoRevealExpiresAt = 0;
 
     io.to(roomCode).emit('gameEvent', {
       playerName: leavingName,
@@ -643,6 +665,7 @@ io.on('connection', (socket) => {
           p.revealedCount = 0;
           p.flagCount = 0;
           p.powerups = {};
+          p.autoRevealExpiresAt = 0;
         });
         io.to(roomCode).emit('boardReset');
         io.to(roomCode).emit('gameReset');

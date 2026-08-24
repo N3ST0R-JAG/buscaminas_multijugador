@@ -16,8 +16,11 @@ let focusedSpectatorId = null;
 let gameFinished = false;
 let myPowerups = { autoReveal: false };
 let lastTapInfo = { cellKey: null, time: 0 };
+let autoRevealExpiresAt = 0;
+let powerupTimerInterval = null;
 
 const POWERUP_LABELS = { autoReveal: 'Revelado Automatico' };
+const POWERUP_DURATION_MS = 30000;
 
 const loginScreen = document.getElementById('login-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -73,10 +76,39 @@ const gameOverResetBtn = document.getElementById('game-over-reset-btn');
 const gameOverCloseBtn = document.getElementById('game-over-close-btn');
 const powerupBadge = document.getElementById('powerup-badge');
 
+function endAutoReveal() {
+  if (powerupTimerInterval) {
+    clearInterval(powerupTimerInterval);
+    powerupTimerInterval = null;
+  }
+  autoRevealExpiresAt = 0;
+  myPowerups.autoReveal = false;
+  if (powerupBadge) {
+    powerupBadge.classList.add('hidden');
+    powerupBadge.textContent = '';
+  }
+}
+
+function updatePowerupBadge() {
+  const remainingMs = autoRevealExpiresAt - Date.now();
+  if (!myPowerups.autoReveal || remainingMs <= 0) {
+    endAutoReveal();
+    return;
+  }
+  if (!powerupBadge) return;
+  powerupBadge.classList.remove('hidden');
+  powerupBadge.textContent = `⚡ ${POWERUP_LABELS.autoReveal} · ${Math.ceil(remainingMs / 1000)}s`;
+}
+
+function startPowerupBadgeTimer() {
+  if (powerupTimerInterval) clearInterval(powerupTimerInterval);
+  updatePowerupBadge();
+  powerupTimerInterval = setInterval(updatePowerupBadge, 250);
+}
+
 function resetMyPowerups() {
-  myPowerups = { autoReveal: false };
+  endAutoReveal();
   lastTapInfo = { cellKey: null, time: 0 };
-  if (powerupBadge) powerupBadge.classList.add('hidden');
 }
 
 function showScreen(screen) {
@@ -578,11 +610,15 @@ socket.on('gameEvent', (data) => {
 });
 
 socket.on('powerUpGained', (data) => {
-  (data.powerups || []).forEach((type) => {
-    myPowerups[type] = true;
+  (data.powerups || []).forEach((entry) => {
+    const type = typeof entry === 'object' && entry !== null ? entry.type : entry;
+    const count = typeof entry === 'object' && entry !== null ? (entry.count || 1) : 1;
     if (type === 'autoReveal') {
-      if (powerupBadge) powerupBadge.classList.remove('hidden');
-      addLogEvent('⚡ Encontraste: Revelado Automatico (doble click/tap en numeros)', 'powerup');
+      const base = Math.max(autoRevealExpiresAt, Date.now());
+      autoRevealExpiresAt = base + POWERUP_DURATION_MS * count;
+      myPowerups.autoReveal = true;
+      addLogEvent(`⚡ Encontraste: Revelado Automatico +${(POWERUP_DURATION_MS * count) / 1000}s (doble click/tap en numeros)`, 'powerup');
+      startPowerupBadgeTimer();
     }
   });
 });
